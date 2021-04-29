@@ -3,17 +3,33 @@ Created on %(21.04)s
 
 @author: %(Igor Ratajczyk)s
 """
-import math
+from math import inf
 import matplotlib.pyplot as plt
-from typing import List,Union
+
+from typing import List,Union,Optional
 
 class Event:
     
-    def __init__(self,name_:str,before_list:List[Event]):
+    def __init__(self,name_:str,before_list:Optional[List[Event]]=[]):
+        """
+        
+
+        Parameters
+        ----------
+        name_ : str
+            The very name of event, for the sake of clarity.
+        before_list : Optional[List[Event]]
+            List of events necessary to start particular event. If event need no earlier events nor activities pass [] or leave.
+            
+        Returns
+        -------
+        None.
+
+        """
         self.name=name_
         self.number = 0
         self.early_time = 0
-        self.late_time = math.inf
+        self.late_time = inf
         self.before =before_list
         self.activ=[]
         self.prec_actv=[]
@@ -25,6 +41,19 @@ class Event:
 class Activity:
     
     def __init__(self,time: Union[int,float]=0):
+        """
+        
+
+        Parameters
+        ----------
+        time : Union[int,float], optional
+            The default is 0. Time required to finish compeletly particular activity.
+
+        Returns
+        -------
+        None.
+
+        """
         self.precedessor = None
         self.successor = None
         self.time = time
@@ -35,14 +64,6 @@ class Activity:
 
 class CPM:
     def __init__(self):
-        """
-        
-
-        Returns
-        -------
-        None.
-
-        """
         self.event_list = []
         self.activity_list=[]
         self.start = None
@@ -57,12 +78,12 @@ class CPM:
         
     def add_event(self,event:Event):
         """
-        
+        Add event to whole project.
 
         Parameters
         ----------
         event : Event
-            DESCRIPTION.
+            Add event as an Event object.
 
         Returns
         -------
@@ -72,6 +93,14 @@ class CPM:
         self.event_list.append(event)
         
     def update(self):
+        """
+        Update whole project so Events can be placed in right order.
+
+        Returns
+        -------
+        None.
+
+        """
         new = []
         for event in self.event_list:
             if not event.before:
@@ -90,12 +119,41 @@ class CPM:
         self.event_list=new
                
 
-    def add_Activity(self,activity,precedessor,successor):
+    def add_Activity(self,activity:Activity,precedessor:Event,successor:Event):
+        """
+        Add activity to a project, precedessor and successor of an activity are necessary to be specified.
+
+        Parameters
+        ----------
+        activity : Activity
+            Activity object.
+        precedessor : Event
+            Specify precedessor of an activity; the very event that occurs right before activity.
+        successor : Event
+            Specify succesor of an activity; the very event that occurs right after activity.
+
+        Returns
+        -------
+        None.
+
+        """
         activity.precedessor=precedessor
         activity.successor=successor
         precedessor.activ.append(activity)
         successor.prec_actv.append(activity)
         self.activity_list.append(activity)
+        
+    def update_times(self):
+        """
+        Update early and late time of every event, clue method of CPM algorithm.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.forward()
+        self.backward()
         
 
     def forward(self):
@@ -121,7 +179,16 @@ class CPM:
             self.backward_heart(elem.precedessor,node.late_time-elem.time)
             
 
-    def find_critical_path(self):
+    def find_critical_path(self)->List[Event]:
+        """
+        Find a critical path; series of Events that must be fishised with no delay when fastest possible finish of Project is concerned.
+
+        Returns
+        -------
+        List[Event]
+            Critical Path.
+
+        """
         for elem in self.start.activ:
             if elem.successor.late_time-self.start.early_time-elem.time == 0:
                 return self.find_critical_path_heart(elem.successor,[self.start,elem.successor])
@@ -135,9 +202,26 @@ class CPM:
         return path
 
     def finish_time(self)->Union[int,float]:
+        """
+        Calculate duration of whole project and/or finish time, starting at time 0 is assumed.
+
+        Returns
+        -------
+        Union[int,float]
+            Finish time
+
+        """
         return self.finish.early_time
 
     def gantt_chart(self):
+        """
+        Plot a Gantt chart, red colour is for critical activities, blue is for earliest possible time of performing and finishing particular activity, and orange mrks time when activity is accepable to being done.
+
+        Returns
+        -------
+        None.
+
+        """
         A=10*(len(self.activity_list))
         fig, gnt = plt.subplots()
         gnt.set_ylim(0, A+10)
@@ -155,64 +239,67 @@ class CPM:
         gnt.set_yticks([A-5-i for i in range(0,A,10)])
         gnt.set_title('Gantt chart')
 
-
-Project = CPM()
-A=Event('A',[])
-B=Event('B',[A])
-C=Event('C',[A])
-D=Event('D',[A])
-E=Event('E',[B,C,D])
-F=Event('F',[B,C,D])
-G=Event('G',[B,C,D])
-H=Event('H',[E])
-I=Event('I',[E,F,G])
-J=Event('J',[G])
-K=Event('K',[H,I,J])
-
-
-Project.add_event(A)
-Project.add_event(B)
-Project.add_event(C)
-Project.add_event(D)
-Project.add_event(E)
-Project.add_event(F)
-Project.add_event(G)
-Project.add_event(H)
-Project.add_event(I)
-Project.add_event(J)
-Project.add_event(K)
-
-
-Project.update()
-
-
-Project.add_Activity(Activity(0),A,B)
-Project.add_Activity(Activity(2),A,C)
-Project.add_Activity(Activity(1),A,D)
-Project.add_Activity(Activity(5),B,E)
-Project.add_Activity(Activity(7),B,F)
-Project.add_Activity(Activity(8),B,G)
-Project.add_Activity(Activity(6),C,E)
-Project.add_Activity(Activity(5),C,F)
-Project.add_Activity(Activity(2),C,G)
-Project.add_Activity(Activity(1),D,E)
-Project.add_Activity(Activity(5),D,F)
-Project.add_Activity(Activity(6),D,G)
-Project.add_Activity(Activity(2),E,H)
-Project.add_Activity(Activity(9),E,I)
-Project.add_Activity(Activity(1),F,I)
-Project.add_Activity(Activity(6),G,I)
-Project.add_Activity(Activity(4),G,J)
-Project.add_Activity(Activity(7),H,K)
-Project.add_Activity(Activity(0),I,K)
-Project.add_Activity(Activity(3),J,K)
-
-
-Project.forward()
-
-Project.backward()
-
-for elem in Project.find_critical_path():
-    print(elem)
-
-Project.gantt_chart()
+def Example_project(): #As far as author's experience is concerned, such exemplary codes are unspeakably convenient.
+    Project = CPM()
+    A=Event('A',[])
+    B=Event('B',[A])
+    C=Event('C',[A])
+    D=Event('D',[A])
+    E=Event('E',[B,C,D])
+    F=Event('F',[B,C,D])
+    G=Event('G',[B,C,D])
+    H=Event('H',[E])
+    I=Event('I',[E,F,G])
+    J=Event('J',[G])
+    K=Event('K',[H,I,J])
+    
+    
+    Project.add_event(A)
+    Project.add_event(B)
+    Project.add_event(C)
+    Project.add_event(D)
+    Project.add_event(E)
+    Project.add_event(F)
+    Project.add_event(G)
+    Project.add_event(H)
+    Project.add_event(I)
+    Project.add_event(J)
+    Project.add_event(K)
+    
+    
+    Project.update()
+    
+    
+    Project.add_Activity(Activity(0),A,B)
+    Project.add_Activity(Activity(2),A,C)
+    Project.add_Activity(Activity(1),A,D)
+    Project.add_Activity(Activity(5),B,E)
+    Project.add_Activity(Activity(7),B,F)
+    Project.add_Activity(Activity(8),B,G)
+    Project.add_Activity(Activity(6),C,E)
+    Project.add_Activity(Activity(5),C,F)
+    Project.add_Activity(Activity(2),C,G)
+    Project.add_Activity(Activity(1),D,E)
+    Project.add_Activity(Activity(5),D,F)
+    Project.add_Activity(Activity(6),D,G)
+    Project.add_Activity(Activity(2),E,H)
+    Project.add_Activity(Activity(9),E,I)
+    Project.add_Activity(Activity(1),F,I)
+    Project.add_Activity(Activity(6),G,I)
+    Project.add_Activity(Activity(4),G,J)
+    Project.add_Activity(Activity(7),H,K)
+    Project.add_Activity(Activity(0),I,K)
+    Project.add_Activity(Activity(3),J,K)
+    
+    
+    Project.forward()
+    
+    Project.backward()
+    
+    for elem in Project.find_critical_path():
+        print(elem)
+    
+    Project.gantt_chart()
+    
+if __name__ == '__main__':
+    Example_project()
