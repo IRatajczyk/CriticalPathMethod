@@ -6,11 +6,15 @@ Created on %(21.04)s
 from math import inf
 import matplotlib.pyplot as plt
 
-from typing import List,Union,Optional
+from typing import List, Union, Optional
+
+time_t = Union[int,float]
 
 class Event:
-    
-    def __init__(self,name_:str,before_list:Optional[List[Event]]=[]):
+    def __init__(self,
+                 name: str,
+                 before_list: = None,
+                ):
         """
         
 
@@ -26,28 +30,30 @@ class Event:
         None.
 
         """
-        self.name=name_
+        self.name: str = name
         self.number = 0
-        self.early_time = 0
+        self.early_time: time_t = 0
         self.late_time = inf
-        self.before =before_list
-        self.activ=[]
-        self.prec_actv=[]
+        self.before = before_list if before_list is not None else []
+        self.activ = []
+        self.prec_actv = []
 
-    def __str__(self)->str:
-        return str(self.name)
+    def __str__(self) -> str:
+        return self.name
 
            
 class Activity:
     
-    def __init__(self,time: Union[int,float]=0):
+    def __init__(self, 
+                 time: time_t = 0
+                ):
         """
         
 
         Parameters
         ----------
         time : Union[int,float], optional
-            The default is 0. Time required to finish compeletly particular activity.
+            The default is 0. Time required to finish completely particular activity.
 
         Returns
         -------
@@ -56,27 +62,29 @@ class Activity:
         """
         self.precedessor = None
         self.successor = None
-        self.time = time
+        self.time: time_t = time
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "("+str(self.precedessor)+":"+str(self.successor)+")"
     
 
 class CPM:
     def __init__(self):
-        self.event_list = []
-        self.activity_list=[]
+        self.event_list: List[Event] = []
+        self.activity_list: List[Activity] = []
         self.start = None
         self.finish = None
         self.number = 1
         
-    def __str__(self)->str:
+    def __str__(self) -> str:
         acc=''
         for elem in self.event_list:
             acc+=str(elem)
         return acc
         
-    def add_event(self,event:Event):
+    def add_event(self,
+                  event: Event
+                 ) -> None:
         """
         Add event to whole project.
 
@@ -92,7 +100,7 @@ class CPM:
         """
         self.event_list.append(event)
         
-    def update(self):
+    def update(self) -> None:
         """
         Update whole project so Events can be placed in right order.
 
@@ -101,25 +109,23 @@ class CPM:
         None.
 
         """
-        new = []
-        for event in self.event_list:
-            if not event.before:
-                new.append(event)
-            else:
-                flag = True
-                for prec in event.before:
-                    if prec not in new:
-                        flag=False
-                if flag:
-                    new.append(event)
-        for idx, elem in enumerate(new):
-            elem.number = idx
-        self.start=new[0]
-        self.finish=new[-1]
-        self.event_list=new
+    ordered_events: List[Event] = []
+    for event in self.event_list:
+        if not event.before:
+            ordered_events.append(event)
+        elif all((predecessor not in ordered_events for predecessor in event.before)):
+            ordered_events.append(event)
+    for idx, elem in enumerate(ordered_events):
+        elem.number = idx
+    self.start = ordered_events[0]
+    self.finish = ordered_events[-1]
+    self.event_list = ordered_events
                
 
-    def add_Activity(self,activity:Activity,precedessor:Event,successor:Event):
+    def add_Activity(
+            self,
+                     
+            activity:Activity,precedessor:Event,successor:Event):
         """
         Add activity to a project, precedessor and successor of an activity are necessary to be specified.
 
@@ -137,8 +143,8 @@ class CPM:
         None.
 
         """
-        activity.precedessor=precedessor
-        activity.successor=successor
+        activity.precedessor = precedessor
+        activity.successor = successor
         precedessor.activ.append(activity)
         successor.prec_actv.append(activity)
         self.activity_list.append(activity)
