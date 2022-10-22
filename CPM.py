@@ -4,8 +4,8 @@ Created on %(21.04)s
 @author: %(Igor Ratajczyk)s
 """
 from math import inf
+from time import time
 import matplotlib.pyplot as plt
-
 from typing import List, Union, Optional
 
 time_t = Union[int,float]
@@ -13,7 +13,7 @@ time_t = Union[int,float]
 class Event:
     def __init__(self,
                  name: str,
-                 before_list: = None,
+                 before_list: Optional[List] = None,
                 ):
         """
         
@@ -31,22 +31,22 @@ class Event:
 
         """
         self.name: str = name
-        self.number = 0
+        self.number: int = -1
         self.early_time: time_t = 0
-        self.late_time = inf
+        self.late_time: time_t = inf
         self.before = before_list if before_list is not None else []
-        self.activ = []
-        self.prec_actv = []
+        self.activities: List = []
+        self.predecessor_actvities: List = []
 
     def __str__(self) -> str:
         return self.name
 
            
 class Activity:
-    
-    def __init__(self, 
-                 time: time_t = 0
-                ):
+    def __init__(
+        self, 
+        time: time_t = 0,
+        ):
         """
         
 
@@ -60,27 +60,26 @@ class Activity:
         None.
 
         """
-        self.precedessor = None
-        self.successor = None
+        self.predecessor: Event = None
+        self.successor: Event = None
         self.time: time_t = time
 
     def __str__(self) -> str:
-        return "("+str(self.precedessor)+":"+str(self.successor)+")"
+        return "("+str(self.predecessor)+":"+str(self.successor)+")"
     
 
-class CPM:
+class CriticalPathMethod:
     def __init__(self):
-        self.event_list: List[Event] = []
         self.activity_list: List[Activity] = []
-        self.start = None
-        self.finish = None
-        self.number = 1
+
+        self.event_list: List[Event] = []
+        self.root_event: Event = Event()
+        self.final_event: Event = Event()
+
+        self.number: int = -1
         
     def __str__(self) -> str:
-        acc=''
-        for elem in self.event_list:
-            acc+=str(elem)
-        return acc
+        return ''.join(str(event) for event in self.event_list)
         
     def add_event(self,
                   event: Event
@@ -109,25 +108,27 @@ class CPM:
         None.
 
         """
-    ordered_events: List[Event] = []
-    for event in self.event_list:
-        if not event.before:
-            ordered_events.append(event)
-        elif all((predecessor not in ordered_events for predecessor in event.before)):
-            ordered_events.append(event)
-    for idx, elem in enumerate(ordered_events):
-        elem.number = idx
-    self.start = ordered_events[0]
-    self.finish = ordered_events[-1]
-    self.event_list = ordered_events
+        ordered_events: List[Event] = []
+        for event in self.event_list:
+            if not event.before:
+                ordered_events.append(event)
+            elif all((predecessor not in ordered_events for predecessor in event.before)):
+                ordered_events.append(event)
+        for idx, elem in enumerate(ordered_events):
+            elem.number = idx
+        self.root_event = ordered_events[0]
+        self.final_event = ordered_events[-1]
+        self.event_list = ordered_events
                
 
-    def add_Activity(
-            self,
-                     
-            activity:Activity,precedessor:Event,successor:Event):
+    def add_activity(
+            self,        
+            activity: Activity,
+            predecessor: Event,
+            successor: Event,
+            ):
         """
-        Add activity to a project, precedessor and successor of an activity are necessary to be specified.
+        Add activity to a project, predecessor and successor of an activity are necessary to be specified.
 
         Parameters
         ----------
@@ -143,13 +144,13 @@ class CPM:
         None.
 
         """
-        activity.precedessor = precedessor
+        activity.predecessor = predecessor
         activity.successor = successor
-        precedessor.activ.append(activity)
-        successor.prec_actv.append(activity)
+        predecessor.activities.append(activity)
+        successor.predecessor_actvities.append(activity)
         self.activity_list.append(activity)
         
-    def update_times(self):
+    def proceed(self) -> None:
         """
         Update early and late time of every event, clue method of CPM algorithm.
 
@@ -158,56 +159,54 @@ class CPM:
         None.
 
         """
-        self.forward()
-        self.backward()
+        self._forward()
+        self._backward()
         
 
-    def forward(self):
-        self.start.early_time = 0
-        for elem in self.start.activ:
-            self.forward_heart(elem.successor,self.start.early_time+elem.time)
+    def _forward(self) -> None:
+        self.root_event.early_time = 0
+        for activity in self.root_event.activities:
+            self._forward_heart(activity.successor, self.root_event.early_time + activity.time)
+            
+    def _forward_heart(self, node: Event, early_start: time_t) -> None:
+        node.early_time = max(node.early_time, early_start)
+        for activity in node.activities:
+            self._forward_heart(activity.successor, node.early_time + activity.time)
 
+    def _backward(self) -> None:
+        self.final_event.late_time = self.final_event.early_time
+        for activity in self.final_event.predecessor_actvities:
+            self._backward_heart(activity.precedessor, self.final_event.late_time - activity.time)
             
-    def forward_heart(self,node,early_start_):
-        node.early_time = max(node.early_time,early_start_)
-        for elem in node.activ:
-            self.forward_heart(elem.successor,node.early_time+elem.time)
-
-    def backward(self):
-        self.finish.late_time = self.finish.early_time
-        for elem in self.finish.prec_actv:
-            self.backward_heart(elem.precedessor,self.finish.late_time-elem.time)
-            
-            
-    def backward_heart(self, node, late_time_):
-        node.late_time = min(node.late_time, late_time_)
-        for elem in node.prec_actv:
-            self.backward_heart(elem.precedessor,node.late_time-elem.time)
+    def _backward_heart(self, node: Event, late_time: time_t):
+        node.late_time = min(node.late_time, late_time)
+        for activity in node.predecessor_actvities:
+            self._backward_heart(activity.precedessor, node.late_time - activity.time)
             
 
-    def find_critical_path(self)->List[Event]:
+    def find_critical_path(self) -> List[Event, Activity]:
         """
         Find a critical path; series of Events that must be fishised with no delay when fastest possible finish of Project is concerned.
 
         Returns
         -------
-        List[Event]
+        List[Event, Activity]
             Critical Path.
 
         """
-        for elem in self.start.activ:
-            if elem.successor.late_time-self.start.early_time-elem.time == 0:
-                return self.find_critical_path_heart(elem.successor,[self.start,elem.successor])
+        for activity in self.root_event.activities:
+            if activity.successor.late_time - self.root_event.early_time - activity.time == 0:
+                return self._find_critical_path_heart(activity.successor, [self.root_event, activity.successor])
 
     
-    def find_critical_path_heart(self,node,path):
-        for elem in node.activ:
-            if elem.successor.late_time-node.early_time-elem.time == 0:
-                path.append(elem.successor)
-                return self.find_critical_path_heart(elem.successor,path)
+    def _find_critical_path_heart(self, event: Event, path: List[Event, Activity]) -> List[Event, Activity]:
+        for activity in event.activities:
+            if activity.successor.late_time - event.early_time - event.time == 0:
+                path.append(activity.successor)
+                return self._find_critical_path_heart(activity.successor, path)
         return path
 
-    def finish_time(self)->Union[int,float]:
+    def finish_time(self) -> time_t:
         """
         Calculate duration of whole project and/or finish time, starting at time 0 is assumed.
 
@@ -245,67 +244,3 @@ class CPM:
         gnt.set_yticks([A-5-i for i in range(0,A,10)])
         gnt.set_title('Gantt chart')
 
-def Example_project(): #As far as author's experience is concerned, such exemplary codes are unspeakably convenient.
-    Project = CPM()
-    A=Event('A',[])
-    B=Event('B',[A])
-    C=Event('C',[A])
-    D=Event('D',[A])
-    E=Event('E',[B,C,D])
-    F=Event('F',[B,C,D])
-    G=Event('G',[B,C,D])
-    H=Event('H',[E])
-    I=Event('I',[E,F,G])
-    J=Event('J',[G])
-    K=Event('K',[H,I,J])
-    
-    
-    Project.add_event(A)
-    Project.add_event(B)
-    Project.add_event(C)
-    Project.add_event(D)
-    Project.add_event(E)
-    Project.add_event(F)
-    Project.add_event(G)
-    Project.add_event(H)
-    Project.add_event(I)
-    Project.add_event(J)
-    Project.add_event(K)
-    
-    
-    Project.update()
-    
-    
-    Project.add_Activity(Activity(0),A,B)
-    Project.add_Activity(Activity(2),A,C)
-    Project.add_Activity(Activity(1),A,D)
-    Project.add_Activity(Activity(5),B,E)
-    Project.add_Activity(Activity(7),B,F)
-    Project.add_Activity(Activity(8),B,G)
-    Project.add_Activity(Activity(6),C,E)
-    Project.add_Activity(Activity(5),C,F)
-    Project.add_Activity(Activity(2),C,G)
-    Project.add_Activity(Activity(1),D,E)
-    Project.add_Activity(Activity(5),D,F)
-    Project.add_Activity(Activity(6),D,G)
-    Project.add_Activity(Activity(2),E,H)
-    Project.add_Activity(Activity(9),E,I)
-    Project.add_Activity(Activity(1),F,I)
-    Project.add_Activity(Activity(6),G,I)
-    Project.add_Activity(Activity(4),G,J)
-    Project.add_Activity(Activity(7),H,K)
-    Project.add_Activity(Activity(0),I,K)
-    Project.add_Activity(Activity(3),J,K)
-    
-    
-    Project.forward()
-    
-    Project.backward()
-    
-    for elem in Project.find_critical_path():
-        print(elem)
-    
-    Project.gantt_chart()
-    
-if __name__ == '__main__':
-    Example_project()
