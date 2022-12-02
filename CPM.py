@@ -11,10 +11,11 @@ from typing import List, Union, Optional
 time_t = Union[int,float]
 
 class Event:
-    def __init__(self,
-                 name: str,
-                 before_list: Optional[List] = None,
-                ):
+    def __init__(
+        self,   
+        name: str,
+        before_list: Optional[List] = None,
+        ):
         """
         
 
